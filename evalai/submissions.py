@@ -11,6 +11,7 @@ import sys
 import tempfile
 import urllib.parse as urlparse
 import uuid
+import re
 
 from click import echo, style
 
@@ -139,6 +140,7 @@ def push(image, phase, url, public, private):
     response = make_request(request_path, "GET")
     federated_user = response["success"]["federated_user"]
     repository_uri = response["success"]["docker_repository_uri"]
+    region = re.search("ecr.(.+).amazonaws", repository_uri).group(1)
 
     # Production Environment
     if ENVIRONMENT == "PRODUCTION":
@@ -153,7 +155,7 @@ def push(image, phase, url, public, private):
 
         ecr_client = boto3.client(
             "ecr",
-            region_name="us-east-1",
+            region_name=region,
             aws_access_key_id=AWS_SERVER_PUBLIC_KEY,
             aws_secret_access_key=AWS_SERVER_SECRET_KEY,
             aws_session_token=SESSION_TOKEN,
@@ -162,7 +164,7 @@ def push(image, phase, url, public, private):
         token = ecr_client.get_authorization_token(
             registryIds=[AWS_ACCOUNT_ID]
         )
-        ecr_client = boto3.client("ecr", region_name="us-east-1")
+        ecr_client = boto3.client("ecr", region_name=region)
         username, password = (
             base64.b64decode(
                 token["authorizationData"][0]["authorizationToken"]
